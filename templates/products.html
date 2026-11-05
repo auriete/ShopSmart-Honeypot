@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+    <style>
+        .navbar-brand:focus {
+          outline: none;
+        }
+
+        .custom-grid-item {
+            height: 20vh;
+        }
+
+        .grid-scroll-container {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 10px; 
+        }
+
+        #content-holder {
+            background-color: gray;
+
+        }
+
+        #searchform {
+            width:60%;
+        }
+    </style>
+  </head> 
+
+  <body class="d-flex flex-column min-vh-100 m-0 bg-light">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark w-100">
+          <div class="container-fluid">
+            <a class="navbar-brand" href="/">ShopSmart</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link active" href="/products">Products</a>
+                <a class="nav-link" href="/about">About us</a>
+                <a class="nav-link" href="/support">Support</a>
+            </div>
+          </div>
+      </nav>
+      
+      <div class="d-flex align-items-center justify-content-center flex-column w-100 flex-grow-1" id="content-holder">  <!-- flex grow 1 forces this thing to fill in the gaps -->
+        <form class="form-inline my-2 my-lg-0" method="post" id="searchform">
+            <input class="form-control mr-sm-2" type="search" placeholder="Search" aria-label="Search" name="searchbar" id="searchbar">
+            <button class="btn bg-light my-2 my-sm-0" type="submit">Search</button>
+        </form>
+
+        <div class="d-grid gap-4 grid-scroll-container my-3" style="grid-template-columns: repeat(2, minmax(120px, 1fr)); width: 80%;">
+            <div class="p-3 bg-white border custom-grid-item">Item 1</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 2</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 3</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 4</div> 
+            <div class="p-3 bg-white border custom-grid-item">Item 5</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 6</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 7</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 8</div>
+            <div class="p-3 bg-white border custom-grid-item">Item 9</div>
+        </div>
+      </div>
+  </body>
+</html>
