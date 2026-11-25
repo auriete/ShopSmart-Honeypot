@@ -1,0 +1,31 @@
+{# Decoy page (see main.py): fake phpMyAdmin login, always shows an error. #}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>phpMyAdmin</title>
+  <style>
+    body { font-family: sans-serif; background: #f3f3f3; }
+    .box { width: 320px; margin: 80px auto; background: #fff; padding: 24px; border: 1px solid #ccc; border-radius: 4px; }
+    h1 { font-size: 22px; text-align: center; color: #235a81; margin-top: 0; }
+    label { display: block; margin: 12px 0 4px; font-size: 14px; }
+    input[type=text], input[type=password] { width: 100%; padding: 6px; box-sizing: border-box; }
+    button { margin-top: 16px; padding: 6px 16px; }
+    .error { background: #fdd; border: 1px solid #c00; color: #a00; padding: 8px; margin-bottom: 12px; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Welcome to phpMyAdmin</h1>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <form method="post" action="/phpmyadmin/">
+      <label for="input_username">Username:</label>
+      <input type="text" name="pma_username" id="input_username">
+      <label for="input_password">Password:</label>
+      <input type="password" name="pma_password" id="input_password">
+      <input type="hidden" name="server" value="1">
+      <button type="submit">Go</button>
+    </form>
+  </div>
+</body>
+</html>

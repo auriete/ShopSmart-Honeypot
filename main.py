@@ -68,12 +68,163 @@ def robots_txt():
         "User-agent: *\n"
         "Disallow: /admin/\n"
         "Disallow: /vault/\n"
+        "Disallow: /backup/\n" # makes /backup discoverable
     )
     return Response(rules, mimetype="text/plain")
+
+# ---------------------------------------------------------------------------
+# DECOY PAGES (Isaiah) - all the content is fake and linked together on purpose:
+#   robots.txt     -> advertises /admin/, /vault/, /backup/
+#   /backup/       -> fake directory linking the files
+#   /backup.txt, /.env, /db_dump.sql, /config.php.bak, /.git/config
+#                  -> fake leaked files containing canary credentials
+#   /phpmyadmin/, /wp-login.php -> fake login pages that always reject
+# ---------------------------------------------------------------------------
+
+# DECOY: fake "backup notes" file, the kind developers accidentally leave on a
+# server. Holds a fake database login using the canary values from
+# secrets/credentials.txt. Linked from the fake /backup/ listing.
+@app.route('/backup.txt') 
+def backup_txt():
+    content = (
+        "# ShopSmart database backup notes\n"
+        "db_host=10.0.0.12\n"
+        "db_user=admin\n"
+        "db_pass=p@ssword123\n"
+    )
+    return Response(content, mimetype="text/plain")
+
+
+# DECOY: fake .env file, the kind developers accidentally leave exposed
+# Contains the canary credentials from secrets/credentials.txt. If an
+# attacker later submits them, the logger flags them in the "secrets" field.
+@app.route('/.env') 
+def env_file():
+   content = (
+        "APP_NAME=ShopSmart\n"
+        "APP_ENV=production\n"
+        "APP_DEBUG=false\n"
+        "DB_HOST=10.0.0.12\n"
+        "DB_PORT=3306\n"
+        "DB_NAME=shopsmart_prod\n"
+        "DB_USER=admin\n"
+        "DB_PASSWORD=p@ssword123\n"
+        "MAIL_HOST=smtp.shopsmart.example\n"
+        "MAIL_USER=noreply@shopsmart.example\n"
+        "MAIL_PASSWORD=p@ssword123\n"
+   )
+   return Response(content, mimetype="text/plain")
+
+# DECOY: fake database dump with a made-up users table (fake emails, random
+# hashes). Tempts attackers to try the usernames or crack the hashes. The
+# username "admin" matches a canary value, so trying it is flagged in the logs.
+@app.route('/db_dump.sql') 
+def db_dump():
+   content = (
+        "-- ShopSmart database dump\n"
+        "-- Host: 10.0.0.12    Database: shopsmart_prod\n"
+        "\n"
+        "DROP TABLE IF EXISTS `users`;\n"
+        "CREATE TABLE `users` (\n"
+        "  `id` int NOT NULL AUTO_INCREMENT,\n"
+        "  `username` varchar(50) NOT NULL,\n"
+        "  `email` varchar(100) NOT NULL,\n"
+        "  `password_hash` varchar(32) NOT NULL,\n"
+        "  PRIMARY KEY (`id`)\n"
+        ");\n"
+        "\n"
+        "INSERT INTO `users` VALUES\n"
+        "(1,'admin','admin@shopsmart.example','3f7a9c2e81b64d05a9e2c7f1b8d40e63'),\n"
+        "(2,'jtan','jtan@shopsmart.example','b92e4d17c05a83f6e1d79a2c4b60f8a5'),\n"
+        "(3,'mlim','mlim@shopsmart.example','7c1d58e3a9f204b6d83e1a57c92f0b4d');\n"
+   )
+   return Response(content, mimetype="text/plain")
+
+# DECOY: fake PHP config backup (.bak files are a common scanner target).
+# Contains the canary DB credentials, so any later use of them is flagged.
+@app.route('/config.php.bak')
+def config_php_bak():
+    content = (
+        "<?php\n"
+        "// ShopSmart configuration (backup)\n"
+        "define('DB_HOST', '10.0.0.12');\n"
+        "define('DB_NAME', 'shopsmart_prod');\n"
+        "define('DB_USER', 'admin');\n"
+        "define('DB_PASSWORD', 'p@ssword123');\n"
+        "define('ADMIN_EMAIL', 'admin@shopsmart.example');\n"
+        "?>\n"
+    )
+    return Response(content, mimetype="text/plain")
+
+# DECOY: fake exposed Git config. Scanners look for /.git/ to download source
+# code. It only reveals a fake remote URL (.example domain) and no credentials.
+@app.route('/.git/config')
+def git_config():
+    content = (
+        "[core]\n"
+        "\trepositoryformatversion = 0\n"
+        "\tfilemode = false\n"
+        "\tbare = false\n"
+        "[remote \"origin\"]\n"
+        "\turl = https://git.shopsmart.example/shopsmart/webshop.git\n"
+        "\tfetch = +refs/heads/*:refs/remotes/origin/*\n"
+        "[branch \"main\"]\n"
+        "\tremote = origin\n"
+        "\tmerge = refs/heads/main\n"
+    )
+    return Response(content, mimetype="text/plain")
+
+# DECOY: fake directory listing styled like a misconfigured server. Linked from
+# robots.txt, and links onward to the other decoy files so an attacker is led
+# from one to the next.
+@app.route('/backup/')
+def backup_listing():
+    html = (
+        "<html><head><title>Index of /backup</title></head><body>\n"
+        "<h1>Index of /backup</h1>\n"
+        "<pre>\n"
+        "<a href=\"/\">../</a>\n"
+        "<a href=\"/db_dump.sql\">db_dump.sql</a>       18-Nov-2026 02:14   1.2K\n"
+        "<a href=\"/config.php.bak\">config.php.bak</a>    15-Nov-2026 09:41   312\n"
+        "<a href=\"/backup.txt\">backup.txt</a>         12-Nov-2026 17:03   187\n"
+        "</pre>\n"
+        "</body></html>\n"
+    )
+    return Response(html, mimetype="text/html")
+
+
+# DECOY: fake phpMyAdmin login. Always rejects. Uses the real field names
+# (pma_username, pma_password) so attack tools recognise it; failed attempts
+# are logged, and canary values typed in are flagged.@app.route('/phpmyadmin/', methods=['GET', 'POST'])
+def phpmyadmin_login():
+    error = None
+    if request.method == 'POST':
+        user = request.form.get('pma_username', '')
+        error = f"#1045 - Access denied for user '{user}'@'localhost' (using password: YES)"
+    return render_template('decoys/phpmyadmin.html', error=error)
+
+
+# DECOY: fake WordPress login. Always rejects. Uses the real field names
+# (log, pwd) so brute-force tools treat it as genuine; attempts are logged.
+@app.route('/wp-login.php', methods=['GET', 'POST'])
+def wp_login():
+    error = None
+    if request.method == 'POST':
+        error = "The username or password you entered is incorrect."
+    return render_template('decoys/wp_login.html', error=error)
+
 
 @app.before_request
 def cache_body():
     request.get_data(cache=True)  # stores raw bytes on the request object
+
+# Sets a fake Server header. Flask normally reports "Werkzeug/Python", which
+# contradicts the PHP-style decoys (config.php.bak, phpMyAdmin, wp-login.php)
+# and would tip off scanners such as nikto or whatweb.
+@app.after_request
+def fake_server_header(response):
+    response.headers["Server"] = "Apache/2.4.41 (Ubuntu)"
+    return response
 
 @app.after_request
 def log_request_response(response): #Log requests and responses
